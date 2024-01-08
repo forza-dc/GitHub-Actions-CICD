@@ -1,0 +1,59 @@
+name: Full-Stack CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v2
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '14'
+
+    - name: Install Dependencies
+      run: |
+        cd frontend
+        npm install
+        cd ../backend
+        npm install
+
+    - name: Build and Test Frontend
+      run: |
+        cd frontend
+        npm test
+        npm run build
+
+    - name: Build and Test Backend
+      run: |
+        cd backend
+        npm test
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Deploy to AWS Elastic Beanstalk
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: 'us-east-1'
+
+    - name: Deploy Backend
+      run: |
+        cd backend
+        eb deploy
+
+    - name: Deploy Frontend
+      run: |
+        cd frontend
+        aws s3 cp build/ s3://forza-github-actions/ --recursive
